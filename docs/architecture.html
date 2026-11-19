@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Partner Radar Map</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: one reading column of numbered "sheets"; each sheet = short prose + one diagram, like an engineering drawing set */
+:root{
+  --bg:#f5f7f8; --panel:#ffffff; --ink:#18232b; --muted:#5b6b75; --line:#c9d3d9;
+  --accent:#0f7a8a; --accent-soft:#dff0f2;
+  --ai:#8a4fbf; --ai-soft:#efe5f8;
+  --store:#b06a12; --store-soft:#f8ecdb;
+  --ext:#56636c; --ext-soft:#e9edf0;
+  --warn:#b23a3a;
+  --f-display:"Space Grotesk",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1519; --panel:#172026; --ink:#e3eaee; --muted:#93a3ad; --line:#2f3d46;
+  --accent:#4cc3d3; --accent-soft:#16343a; --ai:#c39af0; --ai-soft:#2c2140;
+  --store:#e3a656; --store-soft:#3a2b17; --ext:#a3b0b8; --ext-soft:#222c33; --warn:#ef7d7d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1519; --panel:#172026; --ink:#e3eaee; --muted:#93a3ad; --line:#2f3d46;
+  --accent:#4cc3d3; --accent-soft:#16343a; --ai:#c39af0; --ai-soft:#2c2140;
+  --store:#e3a656; --store-soft:#3a2b17; --ext:#a3b0b8; --ext-soft:#222c33; --warn:#ef7d7d; color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:1080px;margin:0 auto;padding-block:40px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.2}
+h1{font-size:clamp(30px,5vw,44px)}
+h2{font-size:24px}
+h3{font-size:16px}
+p{margin:0;max-width:68ch}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+code{background:var(--accent-soft);padding:1px 5px;border-radius:4px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+header{display:flex;flex-direction:column;gap:14px}
+.qs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:8px}
+.q{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:14px 16px}
+.q b{display:block;font-family:var(--f-display);font-size:17px}
+.q span{color:var(--muted);font-size:14px}
+section{display:flex;flex-direction:column;gap:16px}
+.sheet-head{display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:10px}
+.sheet-head .no{font-family:var(--f-mono);color:var(--muted);font-size:13px}
+.fig{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow-x:auto;padding:12px}
+.fig svg{display:block;min-width:820px;width:100%;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px;border:1.5px solid}
+/* svg classes */
+.b-core{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.b-ai{fill:var(--ai-soft);stroke:var(--ai);stroke-width:1.5}
+.b-store{fill:var(--store-soft);stroke:var(--store);stroke-width:1.5}
+.b-ext{fill:var(--ext-soft);stroke:var(--ext);stroke-width:1.5;stroke-dasharray:5 4}
+.b-frame{fill:none;stroke:var(--line);stroke-width:1.5;stroke-dasharray:2 4}
+.t{fill:var(--ink);font-family:var(--f-body);font-size:14px}
+.tb{fill:var(--ink);font-family:var(--f-display);font-size:15px;font-weight:600}
+.tm{fill:var(--muted);font-family:var(--f-mono);font-size:11.5px}
+.tw{fill:var(--warn);font-family:var(--f-mono);font-size:11.5px}
+.ln{stroke:var(--muted);stroke-width:1.5;fill:none}
+.ln-ai{stroke:var(--ai);stroke-width:1.5;fill:none}
+.ln-w{stroke:var(--warn);stroke-width:1.3;fill:none;stroke-dasharray:4 3}
+.ah{fill:var(--muted)} .ah-ai{fill:var(--ai)} .ah-w{fill:var(--warn)}
+/* pipeline */
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;counter-reset:s}
+.steps li{counter-increment:s;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.steps li::before{content:counter(s);font-family:var(--f-mono);font-size:12px;color:var(--accent);font-weight:500}
+.steps .file{font-family:var(--f-mono);font-size:12px;color:var(--muted);word-break:break-all}
+.steps p{font-size:14px}
+.guard{border-left:3px solid var(--warn);background:var(--panel);padding:12px 16px;border-radius:0 8px 8px 0;display:flex;flex-direction:column;gap:6px}
+.guard h3{color:var(--warn)}
+.guard ul{margin:0;padding-left:18px;font-size:14px}
+/* tables */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:620px}
+th,td{text-align:left;padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:500}
+tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+.tree{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.tree div{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;min-width:0}
+.tree h3{font-family:var(--f-mono);font-size:13px;color:var(--accent);margin-bottom:8px}
+.tree dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px}
+.tree dt{font-family:var(--f-mono);font-size:12.5px;color:var(--ink)}
+.tree dd{margin:0;color:var(--muted)}
+footer{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header>
+  <span class="eyebrow">Repository map · cto / Partner Radar</span>
+  <h1>Partner Radar, end to end</h1>
+  <p>A tool for legal recruiters. It crawls the public websites of 15 target law firms, tracks every Corporate &amp; M&amp;A partner, detects joins, departures, lateral moves and promotions, and writes cited call‑prep briefs on demand. Crawling, parsing and change detection are deterministic. The LLM is used last: it turns stored facts into prose, and it tags practice labels that no keyword rule recognises.</p>
+  <p>Underneath, it is a general tracker of people at organisations. Corporate &amp; M&amp;A partners at law firms are one <em>domain profile</em>. A second profile, footballers at clubs, ships to show that retargeting the tool is a configuration change.</p>
+  <div class="qs">
+    <div class="q"><b>Who is where?</b><span>Directory with "last verified" dates · <code>/people</code></span></div>
+    <div class="q"><b>What changed?</b><span>Market‑moves feed of events · <code>/</code></span></div>
+    <div class="q"><b>Before I call?</b><span>AI brief with citation chips · <code>/people/:id</code></span></div>
+  </div>
+</header>
+
+<!-- 1 SYSTEM -->
+<section>
+  <div class="sheet-head"><span class="no">SHEET 1</span><h2>System architecture</h2></div>
+  <p>One <code>docker compose</code> stack with four services. <code>api</code> and <code>worker</code> are the same Python package (<code>backend/src/radar</code>) started with two entrypoints. MongoDB stores the data, what to track (organisations and the domain profile), and the job queue. The CLI (<code>make …</code>) calls the same functions.</p>
+  <div class="fig">
+  <svg viewBox="0 0 1000 470" role="img" aria-label="System architecture diagram">
+    <defs>
+      <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" class="ah"/></marker>
+      <marker id="aa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" class="ah-ai"/></marker>
+    </defs>
+    <rect x="190" y="14" width="600" height="440" rx="12" class="b-frame"/>
+    <text x="206" y="36" class="tm">docker-compose.yml · project "partner-radar"</text>
+
+    <rect x="16" y="60" width="150" height="66" rx="8" class="b-ext"/>
+    <text x="30" y="88" class="tb">Recruiter / admin</text>
+    <text x="30" y="108" class="tm">browser :8080 / :443</text>
+
+    <rect x="16" y="180" width="150" height="80" rx="8" class="b-ext"/>
+    <text x="30" y="206" class="tb">config/ (seed)</text>
+    <text x="30" y="226" class="tm">organisations.yaml</text>
+    <text x="30" y="243" class="tm">domains/*.yaml</text>
+
+    <rect x="16" y="330" width="150" height="80" rx="8" class="b-ext"/>
+    <text x="30" y="356" class="tb">CLI · Makefile</text>
+    <text x="30" y="376" class="tm">survey · scrape · backfill</text>
+    <text x="30" y="393" class="tm">reprocess · forget · user</text>
+
+    <rect x="216" y="52" width="550" height="74" rx="8" class="b-core"/>
+    <text x="232" y="78" class="tb">web · Caddy + React SPA</text>
+    <text x="232" y="98" class="tm">frontend/ · Vite, Mantine · serves build, proxies /api, TLS in prod</text>
+    <text x="232" y="114" class="tm">Moves · People · Person · Organisations · What we track · Costs</text>
+
+    <rect x="216" y="160" width="300" height="84" rx="8" class="b-core"/>
+    <text x="232" y="186" class="tb">api · FastAPI</text>
+    <text x="232" y="206" class="tm">radar/api/ people · events · admin</text>
+    <text x="232" y="222" class="tm">JWT auth (radar/auth.py)</text>
+    <text x="232" y="238" class="tm">healthcheck /api/health</text>
+
+    <rect x="556" y="160" width="210" height="84" rx="8" class="b-ai"/>
+    <text x="572" y="186" class="tb">LlmGateway</text>
+    <text x="572" y="206" class="tm">radar/llm/gateway.py</text>
+    <text x="572" y="222" class="tm">toggle→cache→budget</text>
+    <text x="572" y="238" class="tm">→call→ledger</text>
+
+    <rect x="216" y="278" width="550" height="66" rx="8" class="b-store"/>
+    <text x="232" y="304" class="tb">mongo · MongoDB 8</text>
+    <text x="232" y="324" class="tm">people · events · organisations · jobs (queue) · workers · llm_calls …</text>
+
+    <rect x="216" y="378" width="300" height="62" rx="8" class="b-core"/>
+    <text x="232" y="403" class="tb">worker · radar.worker</text>
+    <text x="232" y="423" class="tm">scheduler + lanes, heartbeat, per-site clock</text>
+    <text x="406" y="372" class="tm">profile: crawler</text>
+
+    <rect x="556" y="378" width="210" height="62" rx="8" class="b-store"/>
+    <text x="572" y="403" class="tb">data/raw volume</text>
+    <text x="572" y="421" class="tm">gzip HTML, content-addressed</text>
+    <text x="572" y="435" class="tm">in-scope only · purged daily</text>
+
+    <rect x="826" y="160" width="160" height="84" rx="8" class="b-ext"/>
+    <text x="840" y="190" class="tb">OpenRouter</text>
+    <text x="840" y="210" class="tm">free models +</text>
+    <text x="840" y="226" class="tm">fallback list</text>
+
+    <rect x="826" y="330" width="160" height="56" rx="8" class="b-ext"/>
+    <text x="840" y="354" class="tb">Org websites</text>
+    <text x="840" y="372" class="tm">sitemaps, listings, bios</text>
+
+    <rect x="826" y="398" width="160" height="56" rx="8" class="b-ext"/>
+    <text x="840" y="422" class="tb">Internet Archive</text>
+    <text x="840" y="440" class="tm">CDX / Wayback</text>
+
+    <path d="M166 93H210" class="ln" marker-end="url(#a)"/>
+    <path d="M366 126V154" class="ln" marker-end="url(#a)"/><text x="374" y="146" class="tm">/api/*</text>
+    <path d="M166 220C190 220 190 300 210 300" class="ln" marker-end="url(#a)"/><text x="172" y="272" class="tm">seed</text>
+    <path d="M516 202H550" class="ln-ai" marker-end="url(#aa)"/>
+    <path d="M766 202H820" class="ln-ai" marker-end="url(#aa)"/>
+    <path d="M366 244V272" class="ln" marker-end="url(#a)" marker-start="url(#a)"/>
+    <path d="M660 244V272" class="ln-ai" marker-end="url(#aa)"/><text x="668" y="264" class="tm">cache + ledger</text>
+    <path d="M366 378V350" class="ln" marker-end="url(#a)" marker-start="url(#a)"/><text x="374" y="368" class="tm">claim jobs</text>
+    <path d="M516 409H550" class="ln" marker-end="url(#a)"/>
+    <path d="M516 392C640 392 700 360 820 358" class="ln" marker-end="url(#a)"/>
+    <text x="640" y="362" class="tm">robots-aware, ≥3 s/site</text>
+    <path d="M490 378C520 330 700 300 740 250" class="ln-ai" marker-end="url(#aa)"/><text x="600" y="357" class="tm" style="fill:var(--ai)">label tagging</text>
+    <path d="M166 370H210" class="ln" marker-end="url(#a)"/>
+    <path d="M166 400C180 470 700 470 820 430" class="ln" marker-end="url(#a)"/>
+    <text x="300" y="463" class="tm">make backfill (cold start)</text>
+  </svg>
+  </div>
+  <div class="legend"><span><i style="background:var(--accent-soft);border-color:var(--accent)"></i>our code</span><span><i style="background:var(--ai-soft);border-color:var(--ai)"></i>AI path</span><span><i style="background:var(--store-soft);border-color:var(--store)"></i>storage</span><span><i style="background:var(--ext-soft);border-color:var(--ext)"></i>outside the stack</span></div>
+</section>
+
+<!-- 2 CONFIG -->
+<section>
+  <div class="sheet-head"><span class="no">SHEET 2</span><h2>What we track is configuration</h2></div>
+  <p>Two things decide what the radar collects: the <strong>organisations</strong> to crawl and the <strong>domain profile</strong> that says who counts and what they're called. Both follow the same pattern. A YAML file seeds a MongoDB collection on startup, admins edit the collection in the UI, and an edited entry (<code>managed: true</code>) is never overwritten by the YAML again. The worker reloads both every scheduler tick, so changes apply within a minute without a restart.</p>
+  <div class="fig">
+  <svg viewBox="0 0 1000 300" role="img" aria-label="Configuration flow">
+    <defs><marker id="d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" class="ah"/></marker></defs>
+    <rect x="20" y="30" width="190" height="80" rx="8" class="b-ext"/><text x="34" y="56" class="tb">config/organisations.yaml</text><text x="34" y="76" class="tm">15 law firms</text><text x="34" y="92" class="tm">seed only</text>
+    <rect x="20" y="170" width="190" height="100" rx="8" class="b-ext"/><text x="34" y="196" class="tb">config/domains/</text><text x="34" y="216" class="tm">legal-partners.yaml</text><text x="34" y="232" class="tm">football.yaml</text><text x="34" y="252" class="tm">pick: RADAR_DOMAIN</text>
+    <rect x="290" y="30" width="220" height="80" rx="8" class="b-store"/><text x="304" y="56" class="tb">organisations</text><text x="304" y="76" class="tm">discovery: sitemap | listing</text><text x="304" y="92" class="tm">selectors · kind · managed</text>
+    <rect x="290" y="170" width="220" height="100" rx="8" class="b-store"/><text x="304" y="196" class="tb">domain_profiles</text><text x="304" y="216" class="tm">vocabulary · titles</text><text x="304" y="232" class="tm">taxonomy · segments · fields</text><text x="304" y="248" class="tm">seniority · AI context</text>
+    <rect x="590" y="30" width="170" height="80" rx="8" class="b-core"/><text x="604" y="56" class="tb">Organisations</text><text x="604" y="76" class="tm">/organisations · OrgEditor</text><text x="604" y="92" class="tm">Test = survey</text>
+    <rect x="590" y="170" width="170" height="100" rx="8" class="b-core"/><text x="604" y="196" class="tb">What we track</text><text x="604" y="216" class="tm">/tracking</text><text x="604" y="232" class="tm">validated save</text><text x="604" y="248" class="tm">Reprocess everyone</text>
+    <rect x="830" y="100" width="155" height="100" rx="8" class="b-core"/><text x="844" y="126" class="tb">worker + api</text><text x="844" y="146" class="tm">reload each tick</text><text x="844" y="162" class="tm">shared AppConfig</text><text x="844" y="178" class="tm">swapped in place</text>
+    <path d="M210 70H284" class="ln" marker-end="url(#d)"/><text x="222" y="62" class="tm">startup</text>
+    <path d="M210 220H284" class="ln" marker-end="url(#d)"/><text x="222" y="212" class="tm">startup</text>
+    <path d="M584 70H516" class="ln" marker-end="url(#d)"/><text x="530" y="62" class="tm">edit</text>
+    <path d="M584 220H516" class="ln" marker-end="url(#d)"/><text x="530" y="212" class="tm">edit</text>
+    <path d="M510 95C680 140 760 130 824 140" class="ln" marker-end="url(#d)"/>
+    <path d="M510 190C680 160 760 165 824 165" class="ln" marker-end="url(#d)"/>
+  </svg>
+  </div>
+  <p>The domain profile holds the vocabulary (Partner/Firm/Practice, or Player/Club/Position), the canonical titles and which ones count as a promotion, the group taxonomy with its keyword rules, segments (which organisations × titles × groups get full profiles), extra fields such as bar admissions, the seniority rule, and the context the AI writes for. Run one domain per deployment.</p>
+</section>
+
+<!-- 3 PIPELINE -->
+<section>
+  <div class="sheet-head"><span class="no">SHEET 3</span><h2>The crawl pipeline</h2></div>
+  <p>The worker runs this sequence for every enabled organisation. Each step is a job in the Mongo queue, claimed atomically with a lease. Parallelism happens across organisations, never within one site. Orchestration lives in <code>radar/worker/crawler.py</code>.</p>
+  <ol class="steps">
+    <li><h3>Discover</h3><span class="file">scraping/sources.py · sitemap.py</span><p>Daily per organisation. Two source types: an XML <strong>sitemap</strong>, or an HTML <strong>listing</strong> page with a link selector and an optional "next page" selector. Either way the result is a list of profile URLs. New URLs, a changed <code>&lt;lastmod&gt;</code>, and stale profiles (7 days in segment, 30 days otherwise) are queued.</p></li>
+    <li><h3>Fetch</h3><span class="file">scraping/fetcher.py · raw_store.py</span><p>One polite client: robots.txt cached daily, ≥3 s per site, conditional GETs, <code>Retry-After</code>. A 403 or 429 marks the organisation blocked for 24 h. When a profile changed, the raw page is kept for people in a segment only; anyone else keeps just the minimal record in their observation.</p></li>
+    <li><h3>Extract</h3><span class="file">scraping/extract.py</span><p>A cascade: configured CSS selectors, then JSON‑LD <code>Person</code>, then heading heuristics, then <code>&lt;h1&gt;</code>. The profile's extra fields are found by heading or schema.org property. Each field records which method produced it.</p></li>
+    <li><h3>Normalise</h3><span class="file">pipeline/normalise.py · llm/classify.py</span><p>Titles map to the profile's canonical titles. Group labels are tagged by the taxonomy's keyword rules first. A label no rule matches is sent to the LLM <strong>once</strong>, and the answer is saved in <code>label_tags</code>. Education gives <code>seniority_year</code>. A missing value never overwrites a known one.</p></li>
+    <li><h3>Diff → events</h3><span class="file">pipeline/diff.py</span><p>Hash of the extracted record. If unchanged, stop. Otherwise emit <code>joined</code>, <code>promoted</code> (into a <code>promotion_to</code> title), <code>title/office/group_changed</code>, and <code>left</code> only after two sitemap misses plus a 404/410.</p></li>
+    <li><h3>Match moves</h3><span class="file">pipeline/matching.py</span><p>A departure at organisation A and an arrival at B within 120 days, scored on name, school, seniority year and group overlap. Name alone gives a "possible move" for a human to confirm.</p></li>
+    <li><h3>Lift‑outs &amp; signals</h3><span class="file">worker/crawler.py · signals.py</span><p>Two or more departures from one office within 60 days raise <code>lift_out</code>. Signals such as "organisation net flow −3" are derived from history, without AI.</p></li>
+  </ol>
+  <div class="guard">
+    <h3>Safeguards against false departures</h3>
+    <ul>
+      <li>If the sitemap shrinks by more than 15%, the run is quarantined: new profiles are still processed, but nobody is marked as departed.</li>
+      <li>Zero profiles found means the run is broken. It does not reset the baseline.</li>
+      <li>Saved label tags mean a re-crawl always tags a label the same way, so the AI can't invent a "groups changed" event.</li>
+      <li>Per-field fill rates on the Organisations page give early warning that a site's layout changed (<code>pipeline/health.py</code>).</li>
+      <li><code>make reprocess</code> or <strong>Reprocess everyone</strong> re-parses stored raw pages after a fix or a profile edit, with no network requests to the sites. Out-of-segment people are re-classified from their stored record instead; if that puts someone in a segment, their profile is fetched again for the full details.</li>
+      <li>Once a day the worker purges raw pages: out-of-segment people's pages are unlinked, and any page no observation refers to is deleted after a day (<code>purge_raw</code> in <code>worker/crawler.py</code>).</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 4 AI -->
+<section>
+  <div class="sheet-head"><span class="no">SHEET 4</span><h2>The AI path: one choke point</h2></div>
+  <p>Every LLM feature goes through <code>LlmGateway.run</code>. A feature supplies a task name, a prompt version and an output schema. The gateway handles everything else, so no feature can bypass cost control.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Task</th><th>Default</th><th>When it runs</th><th>What goes to the model</th></tr></thead>
+    <tbody>
+      <tr><td><code>call_prep_brief</code></td><td>On</td><td>A recruiter asks for a brief on a person page; cached by input hash</td><td>Numbered facts about one person from MongoDB (<code>llm/prompts/brief.md</code>)</td></tr>
+      <tr><td><code>classify_label</code></td><td>On</td><td>During normalise, for a group label no keyword rule matches; once per distinct label and taxonomy version</td><td>The label text and the category list only, no personal data (<code>llm/classify.py</code>)</td></tr>
+      <tr><td><code>org_setup</code></td><td>On</td><td>An admin adds an organisation and asks the AI to fill in its scraper settings; every suggestion is validated, then surveyed before saving</td><td>The name typed, or a summary of the site's structure: sitemaps, links, a sample profile skeleton (<code>llm/onboard.py</code>)</td></tr>
+      <tr><td><code>market_digest</code></td><td>Off</td><td>An admin or recruiter asks for the weekly summary of moves</td><td>That period's events</td></tr>
+    </tbody>
+  </table></div>
+  <div class="fig">
+  <svg viewBox="0 0 1000 250" role="img" aria-label="LLM gateway sequence">
+    <defs>
+      <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" class="ah-ai"/></marker>
+      <marker id="w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" class="ah-w"/></marker>
+    </defs>
+    <rect x="10" y="40" width="140" height="70" rx="8" class="b-core"/>
+    <text x="24" y="68" class="tb">A task</text><text x="24" y="88" class="tm">brief · label</text><text x="24" y="102" class="tm">· setup · digest</text>
+    <rect x="190" y="40" width="130" height="70" rx="8" class="b-ai"/><text x="204" y="70" class="tb">1 Toggle</text><text x="204" y="90" class="tm">feature on?</text>
+    <rect x="360" y="40" width="130" height="70" rx="8" class="b-ai"/><text x="374" y="70" class="tb">2 Cache</text><text x="374" y="90" class="tm">hash(task+ver</text><text x="374" y="103" class="tm">+model+inputs)</text>
+    <rect x="530" y="40" width="130" height="70" rx="8" class="b-ai"/><text x="544" y="70" class="tb">3 Budget</text><text x="544" y="90" class="tm">daily cap</text>
+    <rect x="700" y="40" width="130" height="70" rx="8" class="b-ai"/><text x="714" y="70" class="tb">4 Call</text><text x="714" y="90" class="tm">OpenRouter, fallback,</text><text x="714" y="103" class="tm">1 JSON retry</text>
+    <rect x="860" y="40" width="130" height="70" rx="8" class="b-store"/><text x="874" y="70" class="tb">5 Ledger</text><text x="874" y="90" class="tm">llm_calls</text><text x="874" y="103" class="tm">tokens · $ · latency</text>
+    <path d="M150 75H184" class="ln-ai" marker-end="url(#b)"/><path d="M320 75H354" class="ln-ai" marker-end="url(#b)"/><path d="M490 75H524" class="ln-ai" marker-end="url(#b)"/><path d="M660 75H694" class="ln-ai" marker-end="url(#b)"/><path d="M830 75H854" class="ln-ai" marker-end="url(#b)"/>
+    <path d="M255 110V160" class="ln-w" marker-end="url(#w)"/><text x="205" y="180" class="tw">off → refused</text>
+    <path d="M425 110V160" class="ln-w" marker-end="url(#w)"/><text x="365" y="180" class="tw">hit → $0 answer</text>
+    <path d="M595 110V160" class="ln-w" marker-end="url(#w)"/><text x="545" y="180" class="tw">over → refused</text>
+    <text x="205" y="200" class="tm">every outcome, including refusals, is logged so demand for a disabled feature stays visible</text>
+    <rect x="700" y="150" width="290" height="80" rx="8" class="b-core"/>
+    <text x="714" y="176" class="tb">Brief: citation check</text>
+    <text x="714" y="196" class="tm">a citation to an unsupplied fact is dropped;</text>
+    <text x="714" y="212" class="tm">"unknowns" listed; 👍/👎 → brief_feedback</text>
+    <path d="M765 110V144" class="ln-ai" marker-end="url(#b)"/>
+  </svg>
+  </div>
+</section>
+
+<!-- 5 DATA -->
+<section>
+  <div class="sheet-head"><span class="no">SHEET 5</span><h2>Data model (MongoDB)</h2></div>
+  <p>Indexes are created at startup in <code>radar/db.py</code> and the document shapes live in <code>radar/models.py</code>. A person is read as a single document, so their history and per-field provenance are embedded in it.</p>
+  <div class="fig">
+  <svg viewBox="0 0 1000 400" role="img" aria-label="Collections and relationships">
+    <defs><marker id="c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" class="ah"/></marker></defs>
+    <rect x="20" y="30" width="200" height="90" rx="8" class="b-store"/><text x="34" y="56" class="tb">organisations</text><text x="34" y="76" class="tm">crawl config + kind</text><text x="34" y="91" class="tm">status · baseline</text><text x="34" y="106" class="tm">managed (admin-edited)</text>
+    <rect x="300" y="20" width="260" height="130" rx="8" class="b-store"/><text x="314" y="46" class="tb">people</text><text x="314" y="66" class="tm">one doc per profile URL</text><text x="314" y="82" class="tm">title · groups · segments[]</text><text x="314" y="98" class="tm">facts + provenance per field</text><text x="314" y="114" class="tm">history[] (linked moves)</text><text x="314" y="130" class="tm">record hash · last verified</text>
+    <rect x="640" y="30" width="200" height="90" rx="8" class="b-store"/><text x="654" y="56" class="tb">observations</text><text x="654" y="76" class="tm">immutable per change</text><text x="654" y="91" class="tm">extracted record +</text><text x="654" y="106" class="tm">parser ver + raw hash</text>
+    <rect x="300" y="210" width="260" height="110" rx="8" class="b-store"/><text x="314" y="236" class="tb">events</text><text x="314" y="256" class="tm">joined · left · promoted · moved</text><text x="314" y="272" class="tm">lift_out · *_changed</text><text x="314" y="288" class="tm">before/after · evidence URL</text><text x="314" y="304" class="tm">confidence · review · source</text>
+    <rect x="20" y="210" width="200" height="90" rx="8" class="b-store"/><text x="34" y="236" class="tb">jobs</text><text x="34" y="256" class="tm">discover / fetch</text><text x="34" y="271" class="tm">lease claim · dedupe key</text><text x="34" y="286" class="tm">TTL 7 days when done</text>
+    <rect x="20" y="320" width="200" height="60" rx="8" class="b-store"/><text x="34" y="346" class="tb">domain_profiles</text><text x="34" y="365" class="tm">the active profile</text>
+    <rect x="640" y="160" width="200" height="60" rx="8" class="b-ai"/><text x="654" y="186" class="tb">label_tags</text><text x="654" y="205" class="tm">label + taxonomy hash</text>
+    <rect x="640" y="240" width="200" height="60" rx="8" class="b-ai"/><text x="654" y="266" class="tb">ai_outputs</text><text x="654" y="285" class="tm">cached briefs/digests</text>
+    <rect x="640" y="320" width="200" height="60" rx="8" class="b-ai"/><text x="654" y="346" class="tb">llm_calls</text><text x="654" y="365" class="tm">the cost ledger</text>
+    <rect x="870" y="30" width="115" height="90" rx="8" class="b-store"/><text x="882" y="56" class="tb">data/raw</text><text x="882" y="76" class="tm">ab/abcd…</text><text x="882" y="91" class="tm">.html.gz</text><text x="882" y="106" class="tm">disk, in-scope</text>
+    <path d="M220 75H294" class="ln" marker-end="url(#c)"/><text x="232" y="68" class="tm">1 : n</text>
+    <path d="M560 75H634" class="ln" marker-end="url(#c)"/><text x="572" y="68" class="tm">1 : n</text>
+    <path d="M840 75H864" class="ln" marker-end="url(#c)"/>
+    <path d="M430 150V204" class="ln" marker-end="url(#c)"/><text x="438" y="182" class="tm">1 : n (A→B links two people)</text>
+    <path d="M120 210V126" class="ln" marker-end="url(#c)"/><text x="128" y="170" class="tm">per org</text>
+    <path d="M220 350C260 350 270 140 294 130" class="ln" marker-end="url(#c)"/><text x="232" y="330" class="tm">rules</text>
+    <path d="M634 190C600 190 580 130 562 120" class="ln" marker-end="url(#c)"/><text x="572" y="172" class="tm">tags</text>
+    <path d="M634 270C600 270 580 150 562 140" class="ln" marker-end="url(#c)"/><text x="580" y="240" class="tm">brief of</text>
+    <path d="M740 300V314" class="ln" marker-end="url(#c)"/>
+    <text x="20" y="396" class="tm">also: scrape_runs · crawl_stats · usage_events · brief_feedback · suppressions (hashed URLs, GDPR) · users · app_settings · workers · worker_events</text>
+  </svg>
+  </div>
+</section>
+
+<!-- 6 UI ↔ API -->
+<section>
+  <div class="sheet-head"><span class="no">SHEET 6</span><h2>Frontend pages and the API they call</h2></div>
+  <p>The routes are in <code>frontend/src/App.tsx</code>; page and menu labels come from the domain profile's vocabulary. Client types are generated from FastAPI's OpenAPI schema (<code>frontend/openapi.json</code> → <code>src/api/schema.d.ts</code>), so the backend and frontend cannot drift apart without a type error. Old <code>/partners</code> links redirect to <code>/people</code>.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Page</th><th>File</th><th>Endpoints</th><th>Router</th></tr></thead>
+    <tbody>
+      <tr><td>Market moves <code>/</code></td><td><code>pages/Moves.tsx</code></td><td><code>GET /events</code> · <code>POST /events/{id}/review</code> · <code>POST /events/digest</code></td><td><code>api/events.py</code></td></tr>
+      <tr><td>People (Partners) <code>/people</code></td><td><code>pages/Directory.tsx</code></td><td><code>GET /people</code> · <code>GET /people/export.csv</code></td><td><code>api/people.py</code></td></tr>
+      <tr><td>Person <code>/people/:id</code></td><td><code>pages/Person.tsx</code></td><td><code>GET /people/{id}</code> · <code>POST /people/{id}/brief</code> · <code>POST /briefs/{id}/feedback</code> · <code>POST /people/{id}/refresh</code></td><td><code>api/people.py</code></td></tr>
+      <tr><td>Organisations <code>/organisations</code>, editing admin only</td><td><code>pages/Organisations.tsx</code> · <code>components/OrgEditor.tsx</code></td><td><code>GET /orgs</code> · <code>GET/POST/PUT /admin/orgs…</code> · <code>POST /admin/orgs/survey</code> · <code>POST /admin/orgs/{id}/discover</code></td><td><code>api/admin.py</code></td></tr>
+      <tr><td>What we track <code>/tracking</code> (admin only)</td><td><code>pages/Tracking.tsx</code></td><td><code>GET/PUT /admin/domain</code> · <code>POST /admin/reprocess</code></td><td><code>api/admin.py</code></td></tr>
+      <tr><td>Costs &amp; controls <code>/admin</code> (admin only)</td><td><code>pages/Admin.tsx</code></td><td><code>GET /admin/costs</code> · <code>/admin/usage</code> · <code>/admin/feature-usage</code> · <code>/admin/runs</code> · <code>GET/PUT /admin/settings</code></td><td><code>api/admin.py</code></td></tr>
+      <tr><td>Worker <code>/worker</code> (admin only)</td><td><code>pages/Worker.tsx</code></td><td><code>GET /admin/worker</code> · <code>GET /admin/jobs</code> · <code>GET /admin/worker/events</code> · <code>POST /admin/jobs/{id}/retry|run-now|cancel</code></td><td><code>api/worker.py</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 7 CODE MAP -->
+<section>
+  <div class="sheet-head"><span class="no">SHEET 7</span><h2>Where the code lives</h2></div>
+  <div class="tree">
+    <div><h3>backend/src/radar/</h3><dl>
+      <dt>worker/runner.py</dt><dd>scheduler loop, claims jobs, runs lanes, sends heartbeats</dd>
+      <dt>worker/crawler.py</dt><dd>discover/fetch/extract/diff orchestration, reprocess, erasure, raw purge</dd>
+      <dt>worker/jobs.py</dt><dd>Mongo queue: enqueue, claim, complete, fail, requeue; admin retry, run now, cancel</dd>
+      <dt>worker/heartbeat.py</dt><dd>worker state → <code>workers</code> every 10 s</dd>
+      <dt>worker/events.py</dt><dd>log handler: worker log lines → <code>worker_events</code></dd>
+      <dt>domain.py</dt><dd>domain profile in Mongo: seed, load, validate, save</dd>
+      <dt>orgs.py</dt><dd>organisations in Mongo: seed, load, save, hot-reload</dd>
+      <dt>config.py</dt><dd>YAML models: OrgConfig, DomainConfig</dd>
+      <dt>backfill.py</dt><dd>Internet Archive cold start</dd>
+      <dt>signals.py</dt><dd>derived signals from history</dd>
+      <dt>models.py · db.py</dt><dd>Pydantic docs, indexes</dd>
+      <dt>auth.py · settings.py</dt><dd>users/JWT, env settings</dd>
+      <dt>cli.py</dt><dd>everything <code>make</code> calls</dd>
+    </dl></div>
+    <div><h3>backend/src/radar/ subpackages</h3><dl>
+      <dt>api/</dt><dd>main, deps, schemas + people, events, notes, admin, worker routers</dd>
+      <dt>scraping/</dt><dd>fetcher, sources (sitemap | listing), sitemap, extract, raw_store, survey, onboard (site evidence)</dd>
+      <dt>pipeline/</dt><dd>normalise, diff, matching, health</dd>
+      <dt>llm/</dt><dd>gateway, tasks (brief, digest), classify (labels), onboard (org setup), prompts/</dd>
+    </dl>
+    <h3 style="margin-top:14px">backend/tests/</h3><dl>
+      <dt>test_*.py</dt><dd>unit + integration against a throwaway Mongo</dd>
+      <dt>fixtures/</dt><dd>anonymised HTML pages</dd>
+    </dl></div>
+    <div><h3>frontend/</h3><dl>
+      <dt>src/pages/</dt><dd>Moves, Directory, Person, Organisations, Tracking, Admin</dd>
+      <dt>src/components/</dt><dd>common, OrgEditor</dd>
+      <dt>src/api/</dt><dd>typed client + generated schema</dd>
+      <dt>auth.tsx · lib.ts</dt><dd>login state, helpers</dd>
+      <dt>Caddyfile</dt><dd>static serve + /api proxy + TLS</dd>
+    </dl></div>
+    <div><h3>root</h3><dl>
+      <dt>config/organisations.yaml</dt><dd>seed list of organisations</dd>
+      <dt>config/domains/</dt><dd>legal-partners.yaml (default), football.yaml</dd>
+      <dt>docker-compose*.yml</dt><dd>base, dev (hot reload), prod (80/443)</dd>
+      <dt>deploy/mongo-init.js</dt><dd>creates the app DB user</dd>
+      <dt>scripts/make_env.py</dt><dd>writes .env with random secrets</dd>
+      <dt>seed/</dt><dd>snapshot for <code>make demo</code></dd>
+      <dt>docs/</dt><dd>requirement notes, this map</dd>
+      <dt>.github/workflows/ci.yml</dt><dd>lint, types, tests</dd>
+    </dl></div>
+  </div>
+</section>
+
+<!-- 8 STATUS -->
+<section>
+  <div class="sheet-head"><span class="no">SHEET 8</span><h2>Organisation coverage today</h2></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Status</th><th>Organisations</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>Live (7)</td><td>Weil, Gibson Dunn, Cravath, Milbank, Kirkland &amp; Ellis, Skadden, King &amp; Spalding</td><td>~13k profiles discovered, using the generic extraction plus a few selectors</td></tr>
+      <tr><td>Discovery only (5)</td><td>Latham, Sullivan &amp; Cromwell, Simpson Thacher, Paul Weiss, Davis Polk</td><td>Sitemaps work; selectors or URL patterns still to write</td></tr>
+      <tr><td>Not relevant (1)</td><td>Quinn Emanuel</td><td>Litigation-only firm with no sitemap</td></tr>
+      <tr><td>Not crawled (2)</td><td>Wachtell (403), Paul Hastings (429 on robots.txt)</td><td>Bot protection is respected, never circumvented</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<footer>Compiled from README.md, docker-compose.yml, config/, frontend/src and backend/src/radar. Last updated 19 Nov 2026: domain profiles, listing discovery, AI label tagging and org setup, raw-page retention.</footer>
+</div>
+</body>
+</html>
