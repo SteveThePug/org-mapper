@@ -1,0 +1,73 @@
+# A second domain profile, to show the engine is not specific to lawyers: professional
+# footballers, with clubs as the organisations. Run with RADAR_DOMAIN=football and add clubs in
+# Admin -> Organisations (a squad page with the `listing` source type, usually).
+
+vocabulary:
+  app_name: Squad Radar
+  tagline: Player and coaching-staff movements
+  person: Player
+  people: Players
+  org: Club
+  orgs: Clubs
+  group: Position
+  groups: Positions
+  location: Team
+  locations: Teams
+
+brief_context: >-
+  You prepare a football scout for a first conversation about a professional player or coach.
+digest_context: >-
+  You write a short weekly transfers-and-staff digest for football scouts. The events are about players and coaches.
+
+# Checked in order, first match wins.
+titles:
+  manager: ["head coach", "manager"]
+  coach: ["coach", "assistant"]
+  captain: ["captain"]
+  player: ["player", "goalkeeper", "defender", "midfielder", "forward", "striker", "winger"]
+
+promotion_to: [captain, manager]
+
+taxonomy:
+  goalkeeper:
+    label: Goalkeeper
+    include: ["goalkeeper", "\\bgk\\b", "keeper"]
+  defender:
+    label: Defender
+    include: ["defender", "centre-back", "center back", "full-back", "fullback", "wing-back"]
+  midfielder:
+    label: Midfielder
+    include: ["midfield"]
+  forward:
+    label: Forward
+    include: ["forward", "striker", "winger", "attack"]
+  staff:
+    label: Coaching staff
+    include: ["coach", "manager", "analyst"]
+
+fields:
+  - key: nationality
+    label: Nationality
+    headings: ["nationality", "country"]
+    jsonld: nationality
+  - key: previous_clubs
+    label: Previous clubs
+    headings: ["previous clubs", "career history", "former clubs"]
+
+# No equivalent of "first law degree".
+seniority: null
+
+default_segment: first-team
+
+segments:
+  - id: first-team
+    name: First-team players
+    organisations: all
+    titles: [player, captain]
+    groups: [goalkeeper, defender, midfielder, forward]
+
+  - id: coaching-staff
+    name: Coaching staff
+    organisations: all
+    titles: [manager, coach]
+    groups: [staff]

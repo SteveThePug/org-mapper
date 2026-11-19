@@ -1,0 +1,16 @@
+# Public deployment: set SITE_ADDRESS to your domain in .env and Caddy obtains a TLS certificate.
+services:
+  web:
+    # `!override` replaces the base file's port list. Without it Compose *adds* these to the
+    # base "8080:80", leaving plain HTTP open next to HTTPS.
+    ports: !override
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+  api:
+    environment:
+      SESSION_HTTPS_ONLY: "true"
+
+volumes:
+  caddy-data:

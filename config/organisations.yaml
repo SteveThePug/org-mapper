@@ -1,0 +1,124 @@
+# SEED DATA. The live list of organisations is in MongoDB and is edited on the admin panel's
+# Organisations page. An entry here is copied in on startup unless an admin has edited it there.
+#
+# The organisations we track. Onboarding an organisation: `make survey ORG=<id>`, then fill in `discovery`
+# (and `selectors` only for fields the generic JSON-LD/heading extraction misses), then save a
+# fixture + test. Status per organisation is summarised in the README's coverage matrix.
+#
+# discovery.urls      sitemap(s) to read (a sitemap index is followed)
+# discovery.include   regex a URL must match to be treated as a lawyer profile
+# selectors           CSS selectors per field; these win over generic extraction
+
+organisations:
+  # --- generic pipeline: schema.org JSON-LD + heading heuristics (+ an office selector or two) --
+  - id: weil
+    name: Weil, Gotshal & Manges
+    website: https://www.weil.com
+    discovery:
+      urls: [https://www.weil.com/sitemap/people]
+      include: "^https://www\\.weil\\.com/people/[^/]+$"
+
+  - id: gibson-dunn
+    name: Gibson Dunn
+    website: https://www.gibsondunn.com
+    discovery:
+      urls: [https://www.gibsondunn.com/sitemap_index.xml]
+      child_include: "lawyer-sitemap\\d*\\.xml"
+      include: "^https://www\\.gibsondunn\\.com/lawyer/[^/]+$"
+
+  - id: cravath
+    name: Cravath, Swaine & Moore
+    website: https://www.cravath.com
+    discovery:
+      urls: [https://www.cravath.com/sitemap.xml]
+      include: "^https://www\\.cravath\\.com/people/[^/]+\\.html$"
+    selectors:
+      # CSS-module class names carry a build hash (styles__contactLinks--b31c9c79): match the stable prefix.
+      offices: 'li[class*="contactLinks"] a[href*="/locations/"]'
+
+  - id: milbank
+    name: Milbank
+    website: https://www.milbank.com
+    discovery:
+      urls: [https://www.milbank.com/sitemap.xml]
+      include: "^https://www\\.milbank\\.com/en/professionals/[^/]+\\.html$"
+    selectors:
+      offices: .attorney-office.u-hide-print-pdf
+
+  # --- sitemap discovery + a few organisation-specific selectors -------------------------------------
+  - id: kirkland
+    name: Kirkland & Ellis
+    website: https://www.kirkland.com
+    notes: Imperva/Incapsula bot protection in front of the site; expect blocks at volume.
+    discovery:
+      urls: [https://www.kirkland.com/sitemap/lawyers]
+      include: "^https://www\\.kirkland\\.com/lawyers/[a-z]/[^/]+$"
+    selectors:
+      title: .profile-heading__position
+      groups: .profile-heading__specialty
+      offices: .profile-heading__location-link
+      education: .normalized-rte-list--education li
+      admissions: .normalized-rte-list--admission li
+
+  - id: skadden
+    name: Skadden, Arps, Slate, Meagher & Flom
+    website: https://www.skadden.com
+    discovery:
+      urls: [https://www.skadden.com/sitemap/professionals]
+      include: "^https://www\\.skadden\\.com/professionals/[a-z]/[^/]+$"
+    selectors:
+      title: .profile-header-position
+      offices: .offices-related-name
+      groups: .capabilities-list-capability
+
+  - id: king-spalding
+    name: King & Spalding
+    website: https://www.kslaw.com
+    discovery:
+      urls: [https://www.kslaw.com/sitemap.xml]
+      include: "^https://www\\.kslaw\\.com/People/[^/]+$"
+    selectors:
+      title: .bio-page-hero__title
+      groups: .bio-page-hero__primary-practice
+      offices: .bio-page-hero__contact-details .label
+
+  # --- not onboarded yet (see notes) ----------------------------------------------------------
+  - id: wachtell
+    name: Wachtell, Lipton, Rosen & Katz
+    website: https://www.wlrk.com
+    notes: Sitemap returns HTTP 403 to an identified crawler. Not circumventing; needs permission or another source.
+
+  - id: paul-hastings
+    name: Paul Hastings
+    website: https://www.paulhastings.com
+    notes: robots.txt itself answers HTTP 429 (bot protection). Treated as "do not crawl".
+
+  - id: quinn-emanuel
+    name: Quinn Emanuel Urquhart & Sullivan
+    website: https://www.quinnemanuel.com
+    notes: No sitemap. Litigation-only firm, so ~0 corporate/M&A partners are expected anyway.
+
+  - id: latham
+    name: Latham & Watkins
+    website: https://www.lw.com
+    notes: "Discovery works (sitemap_set/sitemap_people.xml, ~4,100 URLs); office/practice selectors still to be written."
+
+  - id: sullivan-cromwell
+    name: Sullivan & Cromwell
+    website: https://www.sullcrom.com
+    notes: "Discovery works (~1,050 /Lawyers/ URLs). Hashed CSS-module class names; M&A sits inside S&C's 'General Practice' group, which needs a firm-level practice alias."
+
+  - id: simpson-thacher
+    name: Simpson Thacher & Bartlett
+    website: https://www.stblaw.com
+    notes: "sitemap-directory.xml lists /our-team/partners/ (~230). Extraction selectors still to be written."
+
+  - id: paul-weiss
+    name: Paul, Weiss, Rifkind, Wharton & Garrison
+    website: https://www.paulweiss.com
+    notes: "sitemap.xml lists /professionals/partners-and-counsel/ (~550). Extraction selectors still to be written."
+
+  - id: davis-polk
+    name: Davis Polk & Wardwell
+    website: https://www.davispolk.com
+    notes: Drupal sitemap index paginated (?page=N); profile URL pattern still to be identified.

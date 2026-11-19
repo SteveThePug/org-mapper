@@ -1,0 +1,26 @@
+# secrets and local data
+.env
+.env.bak
+
+# won't use github
+.github/
+
+data/
+seed/*.jsonl.gz
+# `make backup` dumps (full personal data)
+backups/
+*.archive.gz
+
+# private context, not part of the submission
+chat.md
+Outline.pdf
+
+# tooling
+__pycache__/
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+node_modules/
+frontend/dist/
+openapi.json

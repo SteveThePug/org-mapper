@@ -1,0 +1,82 @@
+# The whole product: database, API, background crawler and web front end.
+#   make demo  -> mongo + api + web, loaded with a data snapshot (no crawling)
+#   make up    -> the same plus the crawler worker (profile "crawler")
+name: partner-radar
+
+x-backend: &backend
+  build: ./backend
+  image: partner-radar-backend
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    MONGO_URI: mongodb://radar:${MONGO_APP_PASSWORD}@mongo:27017/radar?authSource=radar
+    # .env also holds the database root password; the backend connects as the limited `radar`
+    # user, so blank it out here rather than hand every container full database access.
+    MONGO_ROOT_PASSWORD: ""
+  volumes:
+    - ./config:/app/config:ro
+    - radar-data:/app/data
+  depends_on:
+    mongo:
+      condition: service_healthy
+
+services:
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    # MongoDB keeps a file open per collection and index. Docker's default limit here (1024) is
+    # low enough that the test suite, which creates a database per test, crashed it with
+    # "Too many open files". 64000 is MongoDB's recommended minimum.
+    ulimits:
+      nofile:
+        soft: 64000
+        hard: 64000
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD in .env (make env)}
+      MONGO_INITDB_DATABASE: radar
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?set MONGO_APP_PASSWORD in .env (make env)}
+    volumes:
+      - mongo-data:/data/db
+      - ./deploy/mongo-init.js:/docker-entrypoint-initdb.d/init.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    <<: *backend
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "radar.worker"]
+    profiles: ["crawler"]
+    # On `docker compose stop`/`down` the worker gets SIGTERM, lets each lane finish its current
+    # job, then writes a last "stopped" heartbeat. Docker's default 10 s is shorter than one slow
+    # profile fetch plus an AI call, after which it is killed and the Worker page shows it as
+    # "stale" instead. An unfinished job is not lost either way: its lease expires and it reruns.
+    stop_grace_period: 60s
+
+  web:
+    build:
+      context: ./proxy
+      additional_contexts:
+        frontend: ./frontend
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  mongo-data:
+  radar-data:

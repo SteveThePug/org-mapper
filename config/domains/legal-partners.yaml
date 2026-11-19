@@ -1,0 +1,109 @@
+# The "legal partners" domain profile: who we track, and the words the product uses for them.
+# Retargeting the product (another practice area, another industry, footballers at clubs) is a
+# new profile like this one, picked with RADAR_DOMAIN, not a code change. This file only seeds the
+# database: once an admin edits the profile in the admin panel (Admin -> Tracking), that copy wins.
+
+# Words the UI, events and AI prompts use. Singular and plural, capitalised.
+vocabulary:
+  app_name: Partner Radar
+  tagline: Corporate & M&A partner intelligence
+  person: Partner
+  people: Partners
+  org: Firm
+  orgs: Firms
+  group: Practice
+  groups: Practices
+  location: Office
+  locations: Offices
+
+# Who the AI briefs and digests are written for.
+brief_context: >-
+  You prepare recruiters at a legal executive-search firm for a first phone call with a law-firm partner.
+digest_context: >-
+  You write a short weekly market-moves digest for legal recruiters. The events are about law-firm partners.
+
+# Canonical title -> keywords found in the firm's own job title (lower-cased).
+# Checked in order and the first match wins, so list the most specific titles first.
+titles:
+  retired: ["retired", "former", "emeritus"]
+  partner: ["partner"]
+  counsel: ["counsel"]
+  associate: ["associate", "trainee"]
+
+# A move *into* one of these canonical titles is reported as a promotion.
+promotion_to: [partner]
+
+# Canonical groups (for this domain: practice areas). A firm's label ("Mergers & Acquisitions", "M&A / Corporate",
+# "Private Equity Infrastructure") maps to every tag whose `include` regex matches and whose
+# `exclude` regex doesn't. Labels that match nothing are candidates for one-off LLM
+# classification (cached per label, not per person).
+taxonomy:
+  mergers-acquisitions:
+    label: Mergers & Acquisitions
+    include: ["merger", "acquisition", "\\bm&a\\b", "takeover", "public company advisory", "shareholder activism", "joint venture"]
+    exclude: ["litigation", "dispute", "antitrust", "competition"]
+  private-equity:
+    label: Private Equity
+    include: ["private equity", "buyout", "financial sponsor", "sponsor"]
+    exclude: ["fund formation", "funds", "litigation", "finance"]
+  corporate:
+    label: Corporate
+    include: ["\\bcorporate\\b", "transactional"]
+    exclude: ["litigation", "dispute", "investigation", "crime", "tax", "restructuring", "insolvency", "finance", "governance"]
+  capital-markets:
+    label: Capital Markets
+    include: ["capital markets", "securities offering", "\\bipo", "debt", "equity offering"]
+    exclude: ["litigation", "enforcement"]
+  finance:
+    label: Finance
+    include: ["finance", "banking", "lending", "leveraged"]
+    exclude: ["litigation"]
+  restructuring:
+    label: Restructuring
+    include: ["restructuring", "insolvency", "bankruptcy"]
+  funds:
+    label: Funds
+    include: ["fund formation", "investment funds", "\\bfunds\\b", "asset management"]
+  tax:
+    label: Tax
+    include: ["\\btax"]
+  litigation:
+    label: Litigation & Disputes
+    include: ["litigation", "dispute", "arbitration", "trial", "appellate", "investigation", "enforcement", "white collar"]
+
+# Domain-specific profile fields, on top of the generic ones (name, title, offices, groups,
+# education, contact, bio). `headings` are section headings on a profile page (matched as a
+# prefix, lower-case); `jsonld` is the schema.org Person property that holds the same thing.
+# Like education, they are kept only while someone is in a target segment.
+fields:
+  - key: admissions
+    label: Bar admissions
+    headings: ["bar admission", "admission", "bar and court admission", "qualification", "admitted"]
+  - key: languages
+    label: Languages
+    headings: ["language"]
+    jsonld: knowsLanguage
+
+# Year of the first degree of one of these kinds: a seniority proxy, also used to tell two people
+# with the same name apart. Delete this block for domains where it means nothing.
+seniority:
+  label: First law degree
+  degrees: [jd, llb, bcl]
+
+default_segment: corp-ma-partners
+
+segments:
+  - id: corp-ma-partners
+    name: Corporate & M&A partners
+    organisations: all
+    titles: [partner]
+    # Assumption (stated in the README): "corporate and M&A practice" = the corporate department's
+    # M&A, private equity and general corporate work; finance and capital markets excluded.
+    groups: [mergers-acquisitions, private-equity, corporate]
+
+  # A second segment, to show the same engine serves another brief with no code change.
+  - id: capital-markets-partners
+    name: Capital Markets partners
+    organisations: all
+    titles: [partner]
+    groups: [capital-markets]
