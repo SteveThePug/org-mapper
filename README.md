@@ -22,9 +22,7 @@ There are 3 integrations of AI in this project:
 
 # Demo / Setup instructions
 
-The demo is available at [Radar](https://radar.adam-french.co.uk) with the login credentials:
-- Email: admin@example.com
-- Password: REDACTED
+The demo is available at [Radar](https://radar.adam-french.co.uk) with login credentials given previously.
 
 The hosted demo is recommended over running locally, since the data has to be crawled from the firms' websites and the AI features need an API key. A [manual setup guide](docs/SETUP.md) is available, however it may take around 30 minutes.
 
