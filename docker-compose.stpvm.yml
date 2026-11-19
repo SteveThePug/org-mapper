@@ -1,0 +1,40 @@
+# Hosting on stpvm, behind the web_server edge (radar.adam-french.co.uk).
+#   make stpvm  ==  docker compose -f docker-compose.yml -f docker-compose.stpvm.yml --profile crawler up -d
+#
+# The edge Caddy (adamf/web_server) terminates TLS and proxies radar.<DOMAIN> to `radar-web:80`
+# over its Docker network, so this stack publishes no port at all. Only `web` joins that network:
+# mongo, api and worker stay on this project's private network, and their short names (`api`,
+# `mongo`) can never clash with the site's own containers.
+#
+# Needs MongoDB 8.0's CPU baseline on the host: on x86-64 that is AVX. A VM on the generic QEMU
+# CPU model has none and mongod dies with "illegal instruction"; set the VM's CPU type to `host`.
+services:
+  web:
+    # `!reset` empties the base file's "8080:80": nothing listens on the host.
+    ports: !reset []
+    mem_limit: 128m
+    networks:
+      default:
+      edge:
+        aliases:
+          - radar-web
+
+  api:
+    mem_limit: 384m
+    environment:
+      # The public hop is HTTPS (at the edge), so the session cookie must be Secure.
+      SESSION_HTTPS_ONLY: "true"
+
+  worker:
+    mem_limit: 768m
+
+  mongo:
+    # The host is shared with the whole website and has ~3 GB of RAM. WiredTiger's default cache
+    # is half of (RAM - 1 GB); the demo's working set is a few hundred MB, so cap it.
+    command: ["--wiredTigerCacheSizeGB", "0.4"]
+    mem_limit: 1g
+
+networks:
+  edge:
+    external: true
+    name: web_server_app-network

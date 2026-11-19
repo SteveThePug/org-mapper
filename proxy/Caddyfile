@@ -1,3 +1,13 @@
+# Behind another reverse proxy (e.g. the web_server edge on stpvm), keep the visitor's address
+# from its X-Forwarded-For instead of replacing it with the proxy's: the API uses the client IP
+# for login rate limiting. Only private-network peers are trusted, so a visitor reaching this
+# Caddy directly cannot spoof the header.
+{
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
 # SITE_ADDRESS=":80" serves plain HTTP (local/demo); a domain name gets automatic HTTPS.
 {$SITE_ADDRESS::80} {
 	encode zstd gzip

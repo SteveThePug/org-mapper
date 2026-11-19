@@ -3,6 +3,7 @@
 COMPOSE  := docker compose
 DEV      := docker compose -f docker-compose.yml -f docker-compose.dev.yml
 PROD     := docker compose -f docker-compose.yml -f docker-compose.prod.yml
+STPVM    := docker compose -f docker-compose.yml -f docker-compose.stpvm.yml
 CLI      := $(COMPOSE) run --rm api radar
 SNAPSHOT := seed/snapshot.jsonl.gz
 ENV_GET   = $$(sed -n 's/^$(1)=//p' $(CURDIR)/.env | tr -d '"')
@@ -11,7 +12,7 @@ TEST_MONGO  = mongodb://root:$(call ENV_GET,MONGO_ROOT_PASSWORD)@localhost:27017
 
 .DEFAULT_GOAL := help
 .PHONY: help env install crawl-contact demo up down logs prod survey scrape backfill rematch reprocess user forget snapshot seed \
-        dev-db dev-api dev-worker dev-web types fmt check test backup restore
+        stpvm dev-db dev-api dev-worker dev-web types fmt check test backup restore
 
 help: ## List the targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -60,6 +61,9 @@ logs: ## Follow logs
 
 prod: .env crawl-contact ## Public deployment: Caddy on 80/443 with TLS for SITE_ADDRESS
 	$(PROD) --profile crawler up -d --build --wait
+
+stpvm: .env crawl-contact ## Behind the web_server edge on stpvm (radar.adam-french.co.uk); publishes no port
+	$(STPVM) --profile crawler up -d --build --wait
 
 # --- operations -------------------------------------------------------------------------------
 
